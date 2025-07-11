@@ -4,10 +4,9 @@ import streamlit as st
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-# Page setup
 st.set_page_config(page_title="Anime Recommender", layout="wide")
 
-# Load data
+# Load anime data
 @st.cache_data
 def load_data():
     df = pd.read_csv("anime.csv")
@@ -20,26 +19,27 @@ def load_data():
 
 anime_df = load_data()
 
-# Vectorize genres
+# TF-IDF
 tfidf = TfidfVectorizer(stop_words='english')
 tfidf_matrix = tfidf.fit_transform(anime_df['genre'])
 cosine_sim = cosine_similarity(tfidf_matrix, tfidf_matrix)
 
-# Recommend function
+# Recommendation logic
 def get_recommendations(anime_name, num=5):
-    anime_name = anime_name.lower()
+    anime_name = anime_name.strip().lower()
     matches = anime_df[anime_df['name'].str.lower() == anime_name]
 
     if matches.empty:
-        return pd.DataFrame()  # Return empty DataFrame instead of []
+        return pd.DataFrame()  # Always return DataFrame
 
     idx = matches.index[0]
     sim_scores = list(enumerate(cosine_sim[idx]))
     sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)[1:num+1]
     anime_indices = [i[0] for i in sim_scores]
-    return anime_df.iloc[anime_indices][['name', 'rating', 'episodes']]
 
-# Fetch poster
+    return anime_df.iloc[anime_indices][['name', 'rating', 'episodes']].reset_index(drop=True)
+
+# Poster fetch
 def fetch_poster_url(anime_name):
     try:
         query = '''
@@ -60,18 +60,20 @@ def fetch_poster_url(anime_name):
         pass
     return None
 
-# UI
+# Streamlit UI
 st.title("🎴 Anime Recommendation System")
 anime_input = st.text_input("🔍 Enter an anime name", value="Naruto")
 
 if st.button("Recommend"):
+    st.markdown("### 🔍 Searching...")
+
     try:
         recommendations = get_recommendations(anime_input)
 
         if recommendations.empty:
-            st.error("❌ Anime not found. Try checking the spelling or case.")
+            st.error("❌ Anime not found. Try checking spelling or try another title.")
         else:
-            st.success(f"🎯 Top recommendations for '{anime_input.title()}':")
+            st.success(f"🎯 Top recommendations based on: **{anime_input.title()}**")
             for _, row in recommendations.iterrows():
                 st.subheader(row['name'])
                 st.write(f"⭐ **Rating:** {row['rating']} &nbsp;&nbsp;&nbsp; 🎬 **Episodes:** {row['episodes']}")
@@ -79,7 +81,8 @@ if st.button("Recommend"):
                 if poster_url:
                     st.image(poster_url, width=200)
                 else:
-                    st.warning("Poster not found")
+                    st.warning("🖼 Poster not found")
                 st.markdown("---")
+
     except Exception as e:
-        st.error(f"⚠️ Something went wrong!\n\n{e}")
+        st.exception(f"🔥 Unexpected error:\n\n{str(e)}")
