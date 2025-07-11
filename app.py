@@ -13,7 +13,8 @@ def load_data():
     df['genre'] = df['genre'].fillna('')
     df['rating'] = df['rating'].fillna(0)
     df['episodes'] = df['episodes'].replace('Unknown', 0).fillna(0)
-    df['episodes'] = df['episodes'].astype(str).str.extract('(\d+)')
+    df['episodes'] = df['episodes'].astype(str).str.extract(r'(\d+)')
+
     df['episodes'] = pd.to_numeric(df['episodes'], errors='coerce').fillna(0).astype(int)
     return df.reset_index(drop=True)
 
